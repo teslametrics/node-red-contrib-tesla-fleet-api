@@ -111,7 +111,7 @@
           var veh = (data.vehicles || []).map(function (v) { return (v.display_name || v.vin); }).join(', ');
           var vmsg = (data.vehicles && data.vehicles.length)
             ? ' Found ' + data.vehicles.length + ' vehicle(s): ' + veh + '.' : '';
-          status('Onboarded (registration: ' + data.registration + ').' + vmsg + ' Click Update, then Deploy.', '#3a3');
+          status('Onboarded (registration: ' + data.registration + ').' + vmsg + ' Click Add/Update, then Deploy.', '#3a3');
         }).fail(function (xhr) {
           var e = xhr.responseJSON || {};
           status('Error: ' + (e.error || xhr.statusText) + (e.status ? ' [' + e.status + ']' : ''), '#a33');
@@ -147,12 +147,8 @@
     </select>
   </div>
   <div class="form-row">
-    <label for="node-config-input-client_id"><i class="fa fa-id-card-o"></i> Client ID</label>
-    <input type="text" id="node-config-input-client_id">
-  </div>
-  <div class="form-row">
     <label for="node-config-input-refresh_token"><i class="fa fa-ticket"></i> Refresh Token</label>
-    <input type="password" id="node-config-input-refresh_token" placeholder="paste your refresh token">
+    <input type="password" id="node-config-input-refresh_token" placeholder="insert if you have, or make full onboarding below">
   </div>
 
   <div style="margin-top:6px;border-top:1px solid var(--red-ui-secondary-border-color,#ddd);padding-top:12px">
@@ -193,7 +189,12 @@
     <div class="form-row" style="margin:16px 0 4px"><b>3. Configure your Tesla app</b></div>
     <div class="form-tips" style="margin-bottom:6px">
       At developer.tesla.com set <b>Allowed Origin</b> = <code>https://&lt;domain&gt;</code> and
-      <b>Redirect URI</b> = the value below.
+      <b>Redirect URI</b> = the value below. Your app then gives you the <b>Client ID</b> and
+      <b>Client Secret</b> &mdash; paste both here.
+    </div>
+    <div class="form-row">
+      <label for="node-config-input-client_id"><i class="fa fa-id-card-o"></i> Client ID</label>
+      <input type="text" id="node-config-input-client_id">
     </div>
     <div class="form-row">
       <label for="node-config-input-client_secret"><i class="fa fa-key"></i> Client Secret</label>

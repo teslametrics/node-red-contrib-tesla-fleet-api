@@ -83,7 +83,7 @@ npm install node-red-contrib-tesla-fleet-api
    your callback page → **copy the code**.
 4. Paste it into **Code** and click **2. Finish onboarding** (this does the one-time
    partner registration and exchanges the code for a refresh token).
-5. Click **Update**, then **Deploy**.
+5. Click **Add/Update**, then **Deploy**.
 
 > Already have a refresh token from the CLI (`onboard.mjs`)? Just paste it into the
 > **Refresh Token** field and skip the buttons.

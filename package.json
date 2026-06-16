@@ -1,6 +1,6 @@
 {
   "name": "node-red-contrib-tesla-fleet-api",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Node-RED nodes to read your Tesla's state of charge and ~160 other read-only metrics via the official Tesla Fleet API — read-only, your own developer app, no third-party service, never wakes the car.",
   "keywords": [
     "node-red",
