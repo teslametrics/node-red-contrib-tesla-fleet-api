@@ -1,0 +1,4 @@
+{ "response": { "charge_state": { "battery_level": 48, "battery_range": 100 },
+  "climate_state": { "inside_temp": 20 }, "vehicle_state": { "odometer": 1000, "locked": true },
+  "drive_state": { "shift_state": null }, "gui_settings": { "gui_distance_units": "km/hr" },
+  "vehicle_config": { "car_type": "model3" } } }

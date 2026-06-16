@@ -1,0 +1,84 @@
+<script type="text/javascript">
+  RED.nodes.registerType('tesla-fleet-single-metric', {
+    category: 'function', color: '#cc0000', icon: 'font-awesome/fa-battery-half',
+    defaults: {
+      name: { value: '' }, config: { value: '', type: 'tesla-fleet-config', required: true },
+      vehicle: { value: '' },
+      metric: { value: 'battery_level', required: true },
+      format: { value: 'naked' }, emitMode: { value: 'every' }, unitSystem: { value: '' }
+    },
+    inputs: 1, outputs: 1, paletteLabel: 'Tesla single metric',
+    label: function () { return this.name || ('Tesla ' + (this.metric || 'metric')); },
+    oneditprepare: function () {
+      const sel = $('#node-input-metric'); const cur = this.metric;
+      $.getJSON('tesla-fleet/metrics', function (list) {
+        const byGroup = {};
+        list.forEach(m => { (byGroup[m.group] ||= []).push(m); });
+        Object.keys(byGroup).forEach(g => {
+          const og = $('<optgroup>').attr('label', g);
+          byGroup[g].forEach(m => og.append($('<option>').val(m.key)
+            .text(m.label + (m.scope === 'vehicle_location' ? ' (needs location)' : ''))));
+          sel.append(og);
+        });
+        sel.val(cur);
+      });
+
+      // Populate the Vehicle picker from the selected (deployed) config's token.
+      // Renders only inside the response (so overlapping calls — the config
+      // 'change' event can fire several times — can't append duplicates), keeps
+      // only the latest call's result, and de-dupes by VIN.
+      function loadVehicles(selected) {
+        const vsel = $('#node-input-vehicle');
+        const cfgId = $('#node-input-config').val();
+        const reqId = (loadVehicles._seq = (loadVehicles._seq || 0) + 1);
+        function render(list) {
+          if (reqId !== loadVehicles._seq) return;       // superseded by a newer call
+          vsel.empty().append($('<option>').val('').text('First / only vehicle'));
+          const seen = {};
+          (list || []).forEach(function (v) {
+            if (!v.vin || seen[v.vin]) return;
+            seen[v.vin] = 1;
+            vsel.append($('<option>').val(v.vin).text((v.display_name || v.vin) + ' — ' + v.state));
+          });
+          if (selected && vsel.find('option[value="' + selected + '"]').length === 0) {
+            vsel.append($('<option>').val(selected).text(selected + ' (saved)'));
+          }
+          vsel.val(selected || '');
+        }
+        if (!cfgId || cfgId === '_ADD_') { render([]); return; }
+        $.getJSON('tesla-fleet/vehicles', { config: cfgId }).done(render).fail(function () { render([]); });
+      }
+      loadVehicles(this.vehicle);
+      $('#node-input-config').on('change', function () { loadVehicles($('#node-input-vehicle').val()); });
+    }
+  });
+</script>
+<script type="text/html" data-template-name="tesla-fleet-single-metric">
+  <div class="form-row"><label for="node-input-name"><i class="fa fa-tag"></i> Name</label><input type="text" id="node-input-name"></div>
+  <div class="form-row"><label for="node-input-config"><i class="fa fa-user-circle-o"></i> Account</label><input type="text" id="node-input-config"></div>
+  <div class="form-row"><label for="node-input-vehicle"><i class="fa fa-car"></i> Vehicle</label><select id="node-input-vehicle" style="width:70%"></select></div>
+  <div class="form-row"><label for="node-input-metric"><i class="fa fa-list"></i> Metric</label><select id="node-input-metric" style="width:70%"></select></div>
+  <div class="form-row"><label for="node-input-format"><i class="fa fa-code"></i> Payload</label>
+    <select id="node-input-format" style="width:auto">
+      <option value="naked">naked value</option>
+      <option value="named">{ "&lt;metric&gt;": &lt;value&gt; }</option>
+      <option value="value">{ "value": &lt;value&gt; }</option>
+    </select></div>
+  <div class="form-row"><label for="node-input-emitMode"><i class="fa fa-paper-plane"></i> Send</label>
+    <select id="node-input-emitMode" style="width:auto">
+      <option value="every">every refresh</option>
+      <option value="change">only on change</option>
+    </select></div>
+  <div class="form-row"><label for="node-input-unitSystem"><i class="fa fa-balance-scale"></i> Units</label>
+    <select id="node-input-unitSystem" style="width:auto">
+      <option value="">(inherit from account)</option>
+      <option value="as-reported">As reported</option><option value="metric">Metric</option><option value="imperial">Imperial</option>
+    </select></div>
+</script>
+<script type="text/html" data-help-name="tesla-fleet-single-metric">
+  <p>Emits one read-only Tesla metric. All metric nodes on the same account share the timed
+  refresh poll (so they never duplicate calls). Sending a message to the input triggers a fresh
+  live read on demand. Asleep/offline emits the last known value with <code>msg.stale=true</code>;
+  the car is never woken. Live-only fields such as <code>speed</code> and <code>shift_state</code>
+  are <code>null</code> unless the car is actually moving at read time.</p>
+</script>

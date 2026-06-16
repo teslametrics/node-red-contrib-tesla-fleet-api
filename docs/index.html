@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>node-red-contrib-tesla-fleet-api — Setup guide</title>
+<style>
+  :root { color-scheme: dark; --red:#cc0000; --bg:#0f1115; --card:#1a1d24; --bd:#2a2f3a;
+          --tx:#e6e6e6; --mut:#9aa3b2; }
+  * { box-sizing: border-box; }
+  body { font: 16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; margin:0;
+         background:var(--bg); color:var(--tx); }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 40px 24px 80px; }
+  header { border-bottom:1px solid var(--bd); padding-bottom:24px; margin-bottom:32px; }
+  h1 { font-size:26px; margin:0 0 6px; }
+  h1 .bolt { color:var(--red); }
+  .lead { color:var(--mut); margin:0 0 14px; font-size:15px; }
+  .links a { color:var(--tx); text-decoration:none; border:1px solid var(--bd); border-radius:8px;
+             padding:6px 12px; font-size:13px; margin-right:8px; display:inline-block; }
+  .links a:hover { border-color:var(--red); }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--mut);
+       margin:36px 0 10px; }
+  .step { background:var(--card); border:1px solid var(--bd); border-radius:14px;
+          padding:20px 22px; margin:14px 0; }
+  .step h3 { margin:0 0 8px; font-size:17px; display:flex; align-items:center; gap:10px; }
+  .num { background:var(--red); color:#fff; width:26px; height:26px; border-radius:50%;
+         display:inline-grid; place-items:center; font-size:14px; flex:none; }
+  .substeps { margin:8px 0 4px; border-left:2px solid var(--bd); padding-left:14px; }
+  .sub { position:relative; padding-left:44px; margin:20px 0; }
+  .sub:first-child { margin-top:6px; }
+  .sub::before { content:attr(data-n); position:absolute; left:0; top:-1px; width:28px; height:28px;
+                 border-radius:50%; background:#39414f; color:#fff; font-weight:700; font-size:14px;
+                 display:grid; place-items:center; }
+  .sub h4 { margin:3px 0 8px; font-size:15px; }
+  .sub > :last-child { margin-bottom:0; }
+  .step p { margin:8px 0; }
+  code { background:#11141a; border:1px solid var(--bd); border-radius:6px; padding:1px 6px;
+         font-family:ui-monospace,Menlo,monospace; font-size:13px; white-space:nowrap; }
+  code.url { white-space:normal; overflow-wrap:anywhere; }
+  .copy-btn { display:inline-flex; align-items:center; gap:5px; vertical-align:middle; margin-left:6px;
+    padding:3px 9px; font:inherit; font-size:12px; line-height:1.3; cursor:pointer; color:var(--mut);
+    background:transparent; border:1px solid var(--bd); border-radius:6px; white-space:nowrap; }
+  .copy-btn:hover { border-color:var(--red); color:var(--tx); }
+  .copy-btn.copied { color:#7bd88f; border-color:#7bd88f; }
+  .copy-btn svg { width:13px; height:13px; flex:none; }
+  a { color:#5aa6ff; }
+  ul { margin:8px 0; padding-left:20px; } li { margin:4px 0; }
+  table { width:100%; border-collapse:collapse; margin:12px 0; font-size:14px; }
+  th,td { text-align:left; padding:10px; border-top:1px solid var(--bd); vertical-align:top; }
+  th { color:var(--mut); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
+  .opt { color:var(--mut); }
+  figure { margin:16px 0; }
+  .shot { border:1px dashed var(--bd); border-radius:10px; background:#11141a; color:var(--mut);
+          padding:40px 16px; text-align:center; font-size:14px; }
+  figcaption { color:var(--mut); font-size:13px; margin-top:6px; text-align:center; }
+  .note { background:#15171e; border-left:3px solid var(--red); border-radius:6px;
+          padding:12px 16px; margin:14px 0; font-size:14px; color:var(--mut); }
+  .note b { color:var(--tx); }
+  footer { margin-top:48px; padding-top:20px; border-top:1px solid var(--bd);
+           color:var(--mut); font-size:13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="bolt">&#9889;</span> node-red-contrib-tesla-fleet-api</h1>
+    <p class="lead">Read your Tesla's State of Charge into Node-RED via the official Tesla Fleet API —
+      read-only, your own developer app, no paid third-party service, never wakes the car.</p>
+    <div class="links">
+      <a href="https://www.npmjs.com/package/node-red-contrib-tesla-fleet-api">npm</a>
+      <a href="https://github.com/teslametrics/node-red-contrib-tesla-fleet-api">GitHub</a>
+    </div>
+  </header>
+
+  <h2>What you'll need</h2>
+  <p>A Tesla account and about 10 minutes. Everything else happens by clicking — there is no terminal involved.</p>
+
+  <h2>Setup</h2>
+
+  <div class="step">
+    <h3><span class="num">1</span> Generate your key</h3>
+    <p>In Node-RED, drop in a <b>Tesla single metric</b> node and open its config. Under <b>Onboarding</b> click
+      <b>Generate key pair</b>, then <b>Copy public key</b>. (The private key is not used for read-only —
+      you can download it as a backup or forget it.)</p>
+  </div>
+
+  <div class="step">
+    <h3><span class="num">2</span> Upload the public key</h3>
+    <p>Go to <a href="https://fleetkey.cc" target="_blank" rel="noopener">fleetkey.cc</a>, paste your public
+      key, and it gives you a domain like <code>xxxxx.fleetkey.net</code>. Tesla will read your key from there.
+      Copy that domain and save it in a notepad for the next steps — you'll need it in two places.</p>
+  </div>
+
+  <div class="step">
+    <h3><span class="num">3</span> Create your Tesla developer app</h3>
+    <p>Go to <a href="https://developer.tesla.com" target="_blank" rel="noopener">developer.tesla.com</a>,
+      sign in, and create a <b>Fleet API Application</b>. The wizard has four steps:</p>
+
+    <div class="substeps">
+      <div class="sub" data-n="1">
+        <h4>Application Details</h4>
+        <ul>
+          <li><b>Application Name</b> — anything you like, but it <b>must not contain the word &ldquo;Tesla&rdquo;</b>
+            (the form rejects those). E.g. <i>My EV Dashboard</i> or <i>Home Car Reader</i>.</li>
+          <li><b>Application Description</b> — e.g. <i>Reads my own vehicle data into Node-RED home automation.</i></li>
+          <li><b>Purpose of Usage</b> — e.g. <i>Personal home automation: read-only access to my car&rsquo;s state
+            of charge and other metrics in Node-RED. No commands.</i></li>
+        </ul>
+      </div>
+
+      <div class="sub" data-n="2">
+        <h4>Client Details</h4>
+        <p>Choose grant type <b>&ldquo;Authorization Code and Machine-to-Machine&rdquo;</b>, then fill the
+          <b>three</b> URL fields (this is where people get stuck, so here is exactly what goes where):</p>
+        <table>
+          <tr><th>Field in the Tesla form</th><th>What to enter</th></tr>
+          <tr>
+            <td><b>Allowed Origin URL(s)</b></td>
+            <td>Your fleetkey domain from step 2:<br><code class="url">https://xxxxx.fleetkey.net</code><br>
+              <span class="opt">(the domain hosting your public key)</span></td>
+          </tr>
+          <tr>
+            <td><b>Allowed Redirect URI(s)</b></td>
+            <td><code class="url">https://teslametrics.github.io/node-red-contrib-tesla-fleet-api/callback.html</code><button class="copy-btn" type="button" aria-label="Copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="copy-label">Copy</span></button><br>
+              <span class="opt">(where Tesla returns the login code)</span></td>
+          </tr>
+          <tr>
+            <td><b>Allowed Returned URL(s)</b> <span class="opt">(optional)</span></td>
+            <td><span class="opt">Leave empty.</span></td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="sub" data-n="3">
+        <h4>API &amp; Scopes</h4>
+        <p>Tick only what read-only needs:</p>
+        <ul>
+          <li>&#9745; <b>Vehicle Information</b> — <b>required</b>. This is the read access to your car&rsquo;s live
+            data that the whole package relies on.</li>
+          <li>&#9745; <b>Vehicle Location</b> — <b>optional</b>, only if you want latitude / longitude / heading.
+            Pair it with the <b>Include location</b> option in Node-RED (step 4).</li>
+          <li>Leave <b>Profile Information</b>, <b>Vehicle Commands</b>, <b>Vehicle Charging Management</b> and both
+            <b>Energy Product</b> scopes <b>unchecked</b> — read-only never uses them.</li>
+        </ul>
+      </div>
+
+      <div class="sub" data-n="4">
+        <h4>Billing Details <span class="opt">(optional)</span></h4>
+        <p>Click <b>Skip and Submit</b>. No card needed; Tesla includes a free monthly Fleet API credit and a
+          15-minute poll stays well within it.</p>
+      </div>
+    </div>
+
+    <p>After approval (usually quick, sometimes a few days) you get a <b>Client ID</b> and <b>Client Secret</b>.</p>
+  </div>
+
+  <div class="step">
+    <h3><span class="num">4</span> Finish onboarding in Node-RED</h3>
+    <p>Back in the node's config, fill in <b>Key Domain</b> (your fleetkey domain), <b>Client Secret</b> and
+      the <b>Redirect URI</b> (the callback URL above). Then:</p>
+    <ul>
+      <li>Want location metrics (latitude / longitude / heading)? Tick <b>Include location</b>
+        <span class="opt">(optional)</span> first — it adds the <code>vehicle_location</code> scope. Leave it
+        ticked whenever you need location; those metrics are marked <i>"(needs location)"</i> in the pickers.</li>
+      <li>Click <b>Generate login link</b> &rarr; open it &rarr; sign in to Tesla &amp; approve.</li>
+      <li>You land on the callback page &rarr; copy the <b>code</b>.</li>
+      <li>Paste it into <b>Auth code</b> and click <b>Finish onboarding</b>. The code expires within minutes,
+        so do it promptly.</li>
+    </ul>
+    <p>This registers your app with Tesla and stores a refresh token in the node.</p>
+    <div class="note"><b>Changing scopes after you already authorised once?</b> Tesla may skip the consent
+      screen and keep the old permissions, so the new scope never takes effect. First revoke the app at
+      <a href="https://accounts.tesla.com" target="_blank" rel="noopener">accounts.tesla.com</a> &rarr; Security
+      &rarr; Third-Party Apps, then generate the login link again — Tesla will re-prompt and grant the new scope.</div>
+  </div>
+
+  <div class="step">
+    <h3><span class="num">5</span> Deploy</h3>
+    <p>Click <b>Done</b>, then <b>Deploy</b>. The node now polls your State of Charge. Its badge shows e.g.
+      <code>online 48%</code>; <code>msg.payload</code> carries the battery level.</p>
+  </div>
+
+  <h2>Reading metrics</h2>
+  <p>After onboarding, drop one of two metric nodes onto your flow:</p>
+  <ul>
+    <li><b>Tesla single metric</b> — picks a single metric (e.g. <code>battery_level</code>) and emits its
+      value on <code>msg.payload</code>. Choose the payload format (<i>naked</i> = value only,
+      <i>named</i> = <code>{ key: value }</code>, or <i>value</i> = <code>{ "value": … }</code>) and
+      whether to emit on every refresh or only on change.</li>
+    <li><b>Tesla multiple metrics</b> — tick any number of metrics in the grouped picker; the node emits a
+      single JSON object <code>{ key: value, … }</code> on <code>msg.payload</code>.</li>
+  </ul>
+  <p>Wire either node to a <b>Debug</b> node and click <b>Deploy</b>. All metric nodes share the config's
+    single refresh poll, so adding more nodes does not cause extra Tesla API calls. When the car is
+    asleep or offline, the node emits the last-known value with <code>msg.stale = true</code> and
+    never wakes the car.</p>
+  <p>If your Tesla account has <b>more than one car</b>, each node has a <b>Vehicle</b> picker
+    (it appears after you pair the account and Deploy the config). On a single-car account it
+    auto-selects your only car. The config only polls the cars a node actually reads.</p>
+
+  <h2>Cost &amp; privacy</h2>
+  <p>Reading runs on your own Tesla developer app, so your data goes straight from Tesla to your Node-RED —
+    nothing passes through us or fleetkey (which only hosts a public key). Tesla gives each account a free
+    monthly Fleet API credit; a 15-minute poll stays well within it, and the node never wakes the car.</p>
+
+  <footer>
+    Free &amp; open source (MIT) &middot;
+    <a href="https://github.com/teslametrics/node-red-contrib-tesla-fleet-api">source &amp; issues on GitHub</a>
+  </footer>
+</div>
+<script>
+  // Copy buttons: copy the text of the <code> immediately before the button
+  // (or an explicit data-copy value), with brief "Copied" feedback.
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.copy-btn');
+    if (!btn) return;
+    var src = btn.previousElementSibling;
+    var text = (btn.getAttribute('data-copy') || (src && src.textContent) || '').trim();
+    if (!text) return;
+    var label = btn.querySelector('.copy-label');
+    var flash = function () {
+      btn.classList.add('copied');
+      if (label) label.textContent = 'Copied';
+      setTimeout(function () { btn.classList.remove('copied'); if (label) label.textContent = 'Copy'; }, 1300);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(flash, flash);
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (err) {}
+      ta.remove(); flash();
+    }
+  });
+</script>
+</body>
+</html>

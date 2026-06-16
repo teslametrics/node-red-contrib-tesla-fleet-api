@@ -1,0 +1,21 @@
+# Tesla Fleet API secrets — NEVER commit these
+private-key.pem
+*.key
+.env
+tesla.env
+*.env
+tokens.json
+refresh_token*
+
+# Public key is a per-user artifact (hosted on fleetkey) — keep it out of the repo:
+public-key.pem
+
+# Internal design docs / planning artifacts — kept locally, not in the public package
+docs/superpowers/
+
+# Scratch / live vehicle dumps — never commit personal vehicle data
+tmp/
+
+# Node
+node_modules/
+npm-debug.log*

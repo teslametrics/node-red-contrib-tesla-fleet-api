@@ -1,0 +1,103 @@
+<script type="text/javascript">
+  RED.nodes.registerType('tesla-fleet-multiple-metrics', {
+    category: 'function', color: '#cc0000', icon: 'font-awesome/fa-table',
+    defaults: {
+      name: { value: '' }, config: { value: '', type: 'tesla-fleet-config', required: true },
+      vehicle: { value: '' },
+      metrics: { value: [] }, emitMode: { value: 'every' }, unitSystem: { value: '' }
+    },
+    inputs: 1, outputs: 1, paletteLabel: 'Tesla multiple metrics',
+    label: function () { return this.name || 'Tesla multiple metrics'; },
+    oneditprepare: function () {
+      const chosen = new Set(this.metrics || []);
+      const box = $('#tesla-metric-list');
+      $.getJSON('tesla-fleet/metrics', function (list) {
+        const byGroup = {};
+        list.forEach(m => { (byGroup[m.group] ||= []).push(m); });
+        Object.keys(byGroup).forEach(g => {
+          $('<div>').addClass('tesla-metric-group').text(g)
+            .css({ 'font-weight': 600, margin: '8px 0 2px' }).appendTo(box);
+          byGroup[g].forEach(m => {
+            const row = $('<label>').addClass('tesla-metric-item').css({
+              display: 'flex', 'align-items': 'center', width: 'auto',
+              margin: '0 0 1px', 'font-weight': 400, cursor: 'pointer'
+            });
+            $('<input type="checkbox">')
+              .css({ width: 'auto', margin: '0 6px 0 0', flex: '0 0 auto' })
+              .val(m.key).prop('checked', chosen.has(m.key)).appendTo(row);
+            $('<span>').text(m.label + (m.scope === 'vehicle_location' ? ' (needs location)' : '')).appendTo(row);
+            box.append(row);
+          });
+        });
+      });
+
+      // Select all / deselect all (works on whatever is currently in the list).
+      $('#tesla-metric-all').on('click', function () { $('#tesla-metric-list input[type=checkbox]').prop('checked', true); });
+      $('#tesla-metric-none').on('click', function () { $('#tesla-metric-list input[type=checkbox]').prop('checked', false); });
+
+      // Populate the Vehicle picker from the selected (deployed) config's token.
+      // Renders only inside the response (so overlapping calls — the config
+      // 'change' event can fire several times — can't append duplicates), keeps
+      // only the latest call's result, and de-dupes by VIN.
+      function loadVehicles(selected) {
+        const vsel = $('#node-input-vehicle');
+        const cfgId = $('#node-input-config').val();
+        const reqId = (loadVehicles._seq = (loadVehicles._seq || 0) + 1);
+        function render(list) {
+          if (reqId !== loadVehicles._seq) return;       // superseded by a newer call
+          vsel.empty().append($('<option>').val('').text('First / only vehicle'));
+          const seen = {};
+          (list || []).forEach(function (v) {
+            if (!v.vin || seen[v.vin]) return;
+            seen[v.vin] = 1;
+            vsel.append($('<option>').val(v.vin).text((v.display_name || v.vin) + ' — ' + v.state));
+          });
+          if (selected && vsel.find('option[value="' + selected + '"]').length === 0) {
+            vsel.append($('<option>').val(selected).text(selected + ' (saved)'));
+          }
+          vsel.val(selected || '');
+        }
+        if (!cfgId || cfgId === '_ADD_') { render([]); return; }
+        $.getJSON('tesla-fleet/vehicles', { config: cfgId }).done(render).fail(function () { render([]); });
+      }
+      loadVehicles(this.vehicle);
+      $('#node-input-config').on('change', function () { loadVehicles($('#node-input-vehicle').val()); });
+    },
+    oneditsave: function () {
+      this.metrics = $('#tesla-metric-list input:checked').map(function () { return this.value; }).get();
+    },
+    oneditresize: function (size) {
+      const box = $('#tesla-metric-list');
+      if (!box.length) return;
+      let h = size.height;
+      $('#dialog-form > div:not(.node-input-metric-list-row)').each(function () { h -= $(this).outerHeight(true); });
+      const listRow = $('#dialog-form > div.node-input-metric-list-row');
+      h -= (parseInt(listRow.css('marginTop'), 10) || 0) + (parseInt(listRow.css('marginBottom'), 10) || 0);
+      h -= 6;
+      box.css('height', Math.max(120, h) + 'px');
+    }
+  });
+</script>
+<script type="text/html" data-template-name="tesla-fleet-multiple-metrics">
+  <div class="form-row"><label for="node-input-name"><i class="fa fa-tag"></i> Name</label><input type="text" id="node-input-name"></div>
+  <div class="form-row"><label for="node-input-config"><i class="fa fa-user-circle-o"></i> Account</label><input type="text" id="node-input-config"></div>
+  <div class="form-row"><label for="node-input-vehicle"><i class="fa fa-car"></i> Vehicle</label><select id="node-input-vehicle" style="width:70%"></select></div>
+  <div class="form-row"><label for="node-input-emitMode"><i class="fa fa-paper-plane"></i> Send</label>
+    <select id="node-input-emitMode" style="width:auto"><option value="every">every refresh</option><option value="change">only on change</option></select></div>
+  <div class="form-row" style="margin-bottom:4px">
+    <label style="width:auto"><i class="fa fa-list"></i> Metrics</label>
+    <span style="float:right">
+      <button type="button" class="red-ui-button red-ui-button-small" id="tesla-metric-all">select all</button>
+      <button type="button" class="red-ui-button red-ui-button-small" id="tesla-metric-none">deselect all</button>
+    </span>
+  </div>
+  <div class="form-row node-input-metric-list-row" style="margin-bottom:0">
+    <div id="tesla-metric-list" style="width:100%;box-sizing:border-box;overflow:auto;border:1px solid var(--red-ui-form-input-border-color,#ccc);border-radius:6px;padding:6px 10px"></div>
+  </div>
+</script>
+<script type="text/html" data-help-name="tesla-fleet-multiple-metrics">
+  <p>Emits a JSON object with the selected read-only Tesla metrics on <code>msg.payload</code>.
+  Metric nodes on the same account share the timed refresh poll; sending a message to the input
+  triggers a fresh live read on demand. Asleep/offline emits last-known with <code>msg.stale=true</code>;
+  the car is never woken.</p>
+</script>

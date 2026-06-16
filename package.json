@@ -1,0 +1,49 @@
+{
+  "name": "node-red-contrib-tesla-fleet-api",
+  "version": "1.0.0",
+  "description": "Node-RED nodes to read your Tesla's state of charge and ~160 other read-only metrics via the official Tesla Fleet API — read-only, your own developer app, no third-party service, never wakes the car.",
+  "keywords": [
+    "node-red",
+    "tesla",
+    "fleet-api",
+    "vehicle-data",
+    "soc",
+    "state-of-charge",
+    "ev",
+    "electric-vehicle",
+    "battery",
+    "home-automation"
+  ],
+  "author": "teslametrics",
+  "license": "MIT",
+  "homepage": "https://teslametrics.github.io/node-red-contrib-tesla-fleet-api/",
+  "bugs": {
+    "url": "https://github.com/teslametrics/node-red-contrib-tesla-fleet-api/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "node-red": {
+    "version": ">=3.0.0",
+    "nodes": {
+      "tesla-fleet-config": "nodes/tesla-fleet-config.js",
+      "tesla-fleet-single-metric": "nodes/tesla-fleet-single-metric.js",
+      "tesla-fleet-multiple-metrics": "nodes/tesla-fleet-multiple-metrics.js"
+    }
+  },
+  "files": [
+    "lib/",
+    "nodes/",
+    "onboard.mjs",
+    "LICENSE",
+    "README.md"
+  ],
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/teslametrics/node-red-contrib-tesla-fleet-api.git"
+  }
+}

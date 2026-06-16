@@ -1,0 +1,247 @@
+<script type="text/javascript">
+  RED.nodes.registerType('tesla-fleet-config', {
+    category: 'config',
+    defaults: {
+      name: { value: '' },
+      region: { value: 'eu', required: true },
+      domain: { value: '' },
+      redirect_uri: { value: 'https://teslametrics.github.io/node-red-contrib-tesla-fleet-api/callback.html' },
+      refreshIntervalMin: { value: 15, required: true, validate: function (v) { return Number(v) > 0; } },
+      unitSystem: { value: 'as-reported' },
+      includeLocation: { value: false }
+    },
+    credentials: {
+      client_id: { type: 'text' },
+      client_secret: { type: 'password' },
+      refresh_token: { type: 'password' }
+    },
+    label: function () {
+      return this.name || ('Tesla Fleet [' + (this.region || 'eu') + ']');
+    },
+    oneditprepare: function () {
+      var lastPrivateKey = null;
+
+      if (this.credentials && this.credentials.has_refresh_token) {
+        $('#node-config-input-refresh_token').attr('placeholder', '··· saved ···');
+      }
+      if (this.credentials && this.credentials.has_client_secret) {
+        $('#node-config-input-client_secret').attr('placeholder', '··· saved ···');
+      }
+
+      function status(msg, color) {
+        $('#tesla-onboard-status').text(msg).css('color', color || '#888');
+      }
+
+      // 1. Generate an EC key pair server-side.
+      $('#tesla-keygen-btn').on('click', function () {
+        status('Generating key pair…');
+        $.ajax({ url: 'tesla-fleet/keygen', type: 'POST', contentType: 'application/json', data: '{}' })
+          .done(function (data) {
+            lastPrivateKey = data.private_key;
+            $('#tesla-pubkey').val(data.public_key);
+            $('#tesla-keygen-result').show();
+            $('#tesla-privkey-forget').prop('disabled', false);
+            status('Key generated — copy the public key, then continue with step 2.');
+          })
+          .fail(function (xhr) { status('Keygen error: ' + ((xhr.responseJSON && xhr.responseJSON.error) || xhr.statusText), '#a33'); });
+      });
+
+      $('#tesla-pubkey-copy').on('click', function () {
+        var ta = document.getElementById('tesla-pubkey');
+        ta.select();
+        if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(ta.value); }
+        else { document.execCommand('copy'); }
+        var b = this; $(b).text('Copied');
+        setTimeout(function () { $(b).text('Copy public key'); }, 1500);
+      });
+
+      $('#tesla-privkey-download').on('click', function () {
+        if (!lastPrivateKey) { status('Nothing to download — the key was already forgotten.', '#a33'); return; }
+        var blob = new Blob([lastPrivateKey], { type: 'application/x-pem-file' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'tesla-private-key.pem';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+      });
+
+      $('#tesla-privkey-forget').on('click', function () {
+        $.ajax({ url: 'tesla-fleet/forget-key', type: 'POST', contentType: 'application/json', data: '{}' })
+          .done(function () {
+            lastPrivateKey = null;
+            $('#tesla-privkey-forget').prop('disabled', true);
+            status('Private key removed from this instance.', '#3a3');
+          })
+          .fail(function (xhr) { status('Could not remove key: ' + ((xhr.responseJSON && xhr.responseJSON.error) || xhr.statusText), '#a33'); });
+      });
+
+      // 4. Build the Tesla login link.
+      $('#tesla-login-btn').on('click', function () {
+        var clientId = $('#node-config-input-client_id').val();
+        var redirect = $('#node-config-input-redirect_uri').val();
+        if (!clientId || !redirect) { status('Fill in Client ID and Redirect URI first.', '#a33'); return; }
+        status('Generating login link…');
+        $.getJSON('tesla-fleet/authorize-url', { client_id: clientId, redirect_uri: redirect, include_location: $('#node-config-input-includeLocation').is(':checked') })
+          .done(function (data) {
+            $('#tesla-login-link').attr('href', data.url).show();
+            status('Open the login link, approve, then paste the code below.');
+          })
+          .fail(function (xhr) { status('Error: ' + ((xhr.responseJSON && xhr.responseJSON.error) || xhr.statusText), '#a33'); });
+      });
+
+      // 4. Finish onboarding (partner registration + code exchange).
+      $('#tesla-finish-btn').on('click', function () {
+        var payload = {
+          client_id: $('#node-config-input-client_id').val(),
+          client_secret: $('#node-config-input-client_secret').val(),
+          domain: $('#node-config-input-domain').val(),
+          region: $('#node-config-input-region').val(),
+          redirect_uri: $('#node-config-input-redirect_uri').val(),
+          code: ($('#tesla-code').val() || '').trim()
+        };
+        if (!payload.client_id || !payload.client_secret || !payload.code) {
+          status('Need Client ID, Client Secret and the pasted code.', '#a33'); return;
+        }
+        status('Registering & exchanging code…');
+        $.ajax({
+          url: 'tesla-fleet/onboard', type: 'POST', contentType: 'application/json',
+          data: JSON.stringify(payload)
+        }).done(function (data) {
+          $('#node-config-input-refresh_token').val(data.refresh_token);
+          var veh = (data.vehicles || []).map(function (v) { return (v.display_name || v.vin); }).join(', ');
+          var vmsg = (data.vehicles && data.vehicles.length)
+            ? ' Found ' + data.vehicles.length + ' vehicle(s): ' + veh + '.' : '';
+          status('Onboarded (registration: ' + data.registration + ').' + vmsg + ' Click Update, then Deploy.', '#3a3');
+        }).fail(function (xhr) {
+          var e = xhr.responseJSON || {};
+          status('Error: ' + (e.error || xhr.statusText) + (e.status ? ' [' + e.status + ']' : ''), '#a33');
+        });
+      });
+    }
+  });
+</script>
+
+<script type="text/html" data-template-name="tesla-fleet-config">
+  <div class="form-row">
+    <label for="node-config-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-config-input-name" placeholder="My Tesla">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-region"><i class="fa fa-globe"></i> Region</label>
+    <select id="node-config-input-region" style="width:auto">
+      <option value="eu">Europe / Middle East / Africa</option>
+      <option value="na">North America / Asia-Pacific</option>
+      <option value="cn">China</option>
+    </select>
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-refreshIntervalMin"><i class="fa fa-clock-o"></i> Refresh interval</label>
+    <input type="number" id="node-config-input-refreshIntervalMin" min="1" style="width:80px"> minutes
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-unitSystem"><i class="fa fa-balance-scale"></i> Units</label>
+    <select id="node-config-input-unitSystem" style="width:auto">
+      <option value="as-reported">As reported by Tesla (mi, °C)</option>
+      <option value="metric">Metric (km, °C)</option>
+      <option value="imperial">Imperial (mi, °F)</option>
+    </select>
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-client_id"><i class="fa fa-id-card-o"></i> Client ID</label>
+    <input type="text" id="node-config-input-client_id">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-refresh_token"><i class="fa fa-ticket"></i> Refresh Token</label>
+    <input type="password" id="node-config-input-refresh_token" placeholder="paste your refresh token">
+  </div>
+
+  <div style="margin-top:6px;border-top:1px solid var(--red-ui-secondary-border-color,#ddd);padding-top:12px">
+    <div class="form-tips" style="margin-bottom:14px">
+      <b>Onboarding</b> &mdash; skip this if you already pasted a Refresh Token above.<br>
+      <a href="https://teslametrics.github.io/node-red-contrib-tesla-fleet-api/" target="_blank" rel="noopener">&#128214; Full setup guide &#8599;</a>
+    </div>
+
+    <div class="form-row" style="margin-bottom:4px"><b>1. Generate your key</b></div>
+    <div class="form-row">
+      <button type="button" class="red-ui-button" id="tesla-keygen-btn">Generate key pair</button>
+    </div>
+    <div id="tesla-keygen-result" style="display:none">
+      <div class="form-row">
+        <textarea id="tesla-pubkey" readonly rows="4" style="width:100%;font-family:monospace;font-size:11px"></textarea>
+      </div>
+      <div class="form-row">
+        <button type="button" class="red-ui-button" id="tesla-pubkey-copy">Copy public key</button>
+        <button type="button" class="red-ui-button" id="tesla-privkey-download">Download private key</button>
+        <button type="button" class="red-ui-button" id="tesla-privkey-forget">Forget private key</button>
+      </div>
+      <div class="form-tips" style="margin-bottom:4px">
+        The private key is not used for read-only. Back it up if you might add commands later,
+        or forget it from this instance.
+      </div>
+    </div>
+
+    <div class="form-row" style="margin:16px 0 4px"><b>2. Host the public key</b></div>
+    <div class="form-tips" style="margin-bottom:6px">
+      Upload it to <a href="https://fleetkey.cc" target="_blank" rel="noopener">fleetkey.cc</a> (free),
+      then paste the domain it gives you:
+    </div>
+    <div class="form-row">
+      <label for="node-config-input-domain"><i class="fa fa-link"></i> Key Domain</label>
+      <input type="text" id="node-config-input-domain" placeholder="xxxxx.fleetkey.net">
+    </div>
+
+    <div class="form-row" style="margin:16px 0 4px"><b>3. Configure your Tesla app</b></div>
+    <div class="form-tips" style="margin-bottom:6px">
+      At developer.tesla.com set <b>Allowed Origin</b> = <code>https://&lt;domain&gt;</code> and
+      <b>Redirect URI</b> = the value below.
+    </div>
+    <div class="form-row">
+      <label for="node-config-input-client_secret"><i class="fa fa-key"></i> Client Secret</label>
+      <input type="password" id="node-config-input-client_secret">
+    </div>
+    <div class="form-row">
+      <label for="node-config-input-redirect_uri"><i class="fa fa-reply"></i> Redirect URI</label>
+      <input type="text" id="node-config-input-redirect_uri">
+    </div>
+
+    <div class="form-row" style="margin:16px 0 4px"><b>4. Sign in</b></div>
+    <div class="form-row">
+      <label style="width:auto"><input type="checkbox" id="node-config-input-includeLocation" style="width:auto"> Include location (latitude/longitude/heading — adds the vehicle_location scope and location_data)</label>
+    </div>
+    <div class="form-tips" style="margin:4px 0 8px">
+      Changing scopes after you already authorised once? Tesla may skip the consent screen and keep the
+      old permissions. First revoke this app at
+      <a href="https://accounts.tesla.com" target="_blank" rel="noopener">accounts.tesla.com</a>
+      &rarr; Security &rarr; Third-Party Apps, then generate the login link again so Tesla re-prompts.
+    </div>
+    <div class="form-row">
+      <button type="button" class="red-ui-button" id="tesla-login-btn">Generate login link</button>
+      <a id="tesla-login-link" href="#" target="_blank" rel="noopener" style="display:none;margin-left:8px">Open Tesla login &#8599;</a>
+    </div>
+    <div class="form-row">
+      <label for="tesla-code"><i class="fa fa-clipboard"></i> Auth code</label>
+      <input type="text" id="tesla-code" placeholder="paste the code (expires in minutes)">
+    </div>
+    <div class="form-row">
+      <button type="button" class="red-ui-button" id="tesla-finish-btn">Finish onboarding</button>
+    </div>
+    <div class="form-row">
+      <span id="tesla-onboard-status" style="color:#888"></span>
+    </div>
+  </div>
+</script>
+
+<script type="text/html" data-help-name="tesla-fleet-config">
+  <p>Holds your Tesla Fleet API application credentials and manages the OAuth token
+  lifecycle for read-only access.</p>
+  <h3>Fields</h3>
+  <dl class="message-properties">
+    <dt>Region</dt><dd>Your vehicle's home region (EU/NA/CN).</dd>
+    <dt>Client ID / Secret</dt><dd>From your app at developer.tesla.com.</dd>
+    <dt>Key Domain</dt><dd>Where your public key is hosted (e.g. your <code>fleetkey.net</code> subdomain).</dd>
+    <dt>Redirect URI</dt><dd>Must match a redirect registered in your Tesla app.</dd>
+    <dt>Refresh Token</dt><dd>Paste an existing one, or obtain it via the onboarding steps.</dd>
+  </dl>
+  <p>At runtime only the Client ID and Refresh Token are used (the refresh grant needs
+  no secret). The rotated refresh token is persisted under the Node-RED user directory.</p>
+</script>
