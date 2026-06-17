@@ -140,3 +140,10 @@ across Node-RED restarts.
 ## License
 
 MIT
+
+## Disclaimer
+
+This is **not an official Tesla tool** — it's a community-built project, **not affiliated with,
+endorsed by, or sponsored by Tesla, Inc.** It talks to Tesla's official Fleet API using your own
+developer credentials. *Tesla* and related names and logos are trademarks of Tesla, Inc., used
+here only to identify the API this package works with.
