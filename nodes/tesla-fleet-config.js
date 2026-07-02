@@ -270,9 +270,18 @@ module.exports = function (RED) {
     RED.auth.needsPermission('tesla-fleet-config.write'),
     async function (req, res) {
       try {
-        const { client_id, client_secret, domain, region, code, redirect_uri } = req.body || {};
+        const body = req.body || {};
+        const { client_id, domain, region, code, redirect_uri, node_id } = body;
+        // Node-RED never sends a stored password back to the editor: the client_secret field
+        // carries the '__PWRD__' sentinel (or is blank) when a value is already saved. In that
+        // case fall back to the deployed config node's stored credential.
+        let client_secret = body.client_secret;
+        if (!client_secret || client_secret === '__PWRD__') {
+          const cnode = node_id && RED.nodes.getNode(node_id);
+          client_secret = (cnode && cnode.credentials && cnode.credentials.client_secret) || '';
+        }
         if (!client_id || !client_secret || !code || !redirect_uri) {
-          return res.status(400).json({ error: 'client_id, client_secret, code and redirect_uri are required' });
+          return res.status(400).json({ error: 'client_id, client_secret (typed or already saved), code and redirect_uri are required' });
         }
         const reg = region || 'eu';
         let registration = 'skipped (no domain)';

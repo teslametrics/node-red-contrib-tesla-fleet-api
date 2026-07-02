@@ -20,6 +20,7 @@
     },
     oneditprepare: function () {
       var lastPrivateKey = null;
+      var nodeId = this.id;
 
       if (this.credentials && this.credentials.has_refresh_token) {
         $('#node-config-input-refresh_token').attr('placeholder', '··· saved ···');
@@ -94,13 +95,16 @@
         var payload = {
           client_id: $('#node-config-input-client_id').val(),
           client_secret: $('#node-config-input-client_secret').val(),
+          node_id: nodeId,
           domain: $('#node-config-input-domain').val(),
           region: $('#node-config-input-region').val(),
           redirect_uri: $('#node-config-input-redirect_uri').val(),
           code: ($('#tesla-code').val() || '').trim()
         };
-        if (!payload.client_id || !payload.client_secret || !payload.code) {
-          status('Need Client ID, Client Secret and the pasted code.', '#a33'); return;
+        // client_secret may be Node-RED's '__PWRD__' sentinel or blank (a saved secret is
+        // not sent to the editor); the server falls back to the node's stored credential.
+        if (!payload.client_id || !payload.code) {
+          status('Need Client ID and the pasted code.', '#a33'); return;
         }
         status('Registering & exchanging code…');
         $.ajax({
